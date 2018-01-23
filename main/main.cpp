@@ -73,7 +73,7 @@ void readSensor() {
     ESP_LOGD(tag, "Starting I2C read loop");
     fflush(stdout);
     esp_light_sleep_start();
-    BMP180 *sensor = new BMP180();
+    BMP180 *sensor = new BMP180(BMP085_MODE_ULTRAHIGHRES);
 
     while (1) {
         pressure = sensor->readPressure();
