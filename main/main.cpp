@@ -76,22 +76,20 @@ void readSensor() {
     while (1) {
         pressure = sensor->readPressure();
         temperature = sensor->readTemperature();
-        ESP_LOGI(tag, "\n");
 
-        ESP_LOGI(tag, "Pressure: %d hPa", pressure);
+        ESP_LOGI(tag, "Pressure: %.2f hPa", pressure);
         ESP_LOGI(tag, "Temperature: %.2f °C", temperature);
         fflush(stdout);
         esp_light_sleep_start();
         TimerHandle_t readTimer = xTimerCreate("read_sensor", pdMS_TO_TICKS(1000), pdFALSE, (void*)1, &readSensorTimer);
         if (readTimer != NULL) {
-            ESP_LOGI(tag, "Starting timer");
+            ESP_LOGD(tag, "Starting timer");
             if (xTimerStart(readTimer, 0) != pdPASS) {
                 ESP_LOGE(tag, "Error");
             }
         } else {
             ESP_LOGE(tag, "Could not register timer");
         }
-        ESP_LOGI(tag, "\n");
 
         xTaskCreate((TaskFunction_t)updateDisplay, "update display", 1024 * 2, NULL, 10, &hUpdateDisplay);
 
@@ -108,7 +106,7 @@ extern "C" {
 
 void app_main()
 {
-    esp_log_level_set("*", ESP_LOG_INFO);
+    esp_log_level_set("*", ESP_LOG_WARN);
     ESP_LOGI(tag, "Hello world!");
 
     /* Print chip information */
