@@ -44,7 +44,7 @@ static void i2c_master_init()
     conf.scl_io_num = GPIO_NUM_15;
     conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
     conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.master.clk_speed = 50000;
+    conf.master.clk_speed = 1000000;
     i2c_param_config(I2C_NUM_0, &conf);
     ESP_ERROR_CHECK( i2c_driver_install(I2C_NUM_0, conf.mode, 0, 0, 0) );
 }
