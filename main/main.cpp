@@ -30,6 +30,7 @@ TaskHandle_t hUpdateDisplay = NULL;
 u8g2_t u8g2;
 
 double temperature = 0;
+double pressure = 0;
 
 /**
  * @brief i2c master initialization
@@ -57,6 +58,8 @@ void updateDisplay() {
 
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tf);
     u8g2_DrawUTF8(&u8g2, 2, 17, str);
+    sprintf(str, "Pressure: %.2f hPa", pressure);
+    u8g2_DrawUTF8(&u8g2, 2, 34, str);
     u8g2_SendBuffer(&u8g2);
 
     vTaskDelete(NULL);
@@ -71,7 +74,6 @@ void readSensor() {
     fflush(stdout);
     esp_light_sleep_start();
     BMP180 *sensor = new BMP180();
-    int32_t pressure = 0;
 
     while (1) {
         pressure = sensor->readPressure();
