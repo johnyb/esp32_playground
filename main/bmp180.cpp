@@ -64,23 +64,18 @@ void BMP180::readParameters() {
     m_MC = read16Bit(BMP085_REGISTER_CAL_MC);
     m_MD = read16Bit(BMP085_REGISTER_CAL_MD);
 
-    double c3, c4, b1;
-    c3 = 160.0 * pow(2,-15) * m_AC3;
-    c4 = pow(10,-3) * pow(2,-15) * m_AC4;
-    b1 = pow(160,2) * pow(2,-30) * m_B1;
-    c5 = (pow(2,-15) / 160) * m_AC5;
-    c6 = m_AC6;
-    mc = (pow(2,11) / pow(160,2)) * m_MC;
-    md = m_MD / 160.0;
-    x0 = m_AC1;
-    x1 = 160.0 * pow(2,-13) * m_AC2;
-    x2 = pow(160,2) * pow(2,-25) * m_B2;
-    y0 = c4 * pow(2,15);
-    y1 = c4 * c3;
-    y2 = c4 * b1;
-    p0 = (3791.0 - 8.0) / 1600.0;
-    p1 = 1.0 - 7357.0 * pow(2,-20);
-    p2 = 3038.0 * 100.0 * pow(2,-36);
+    /*
+    m_AC1 = 408;
+    m_AC2 = -72;
+    m_AC3 = -14383;
+    m_AC4 = 32741;
+    m_AC5 = 32757;
+    m_AC6 = 23153;
+    m_B1 = 6190;
+    m_B2 = 4;
+    m_MC = -8711;
+    m_MD = 2868;
+    //*/
 }
 
 double BMP180::readTemperature() {
@@ -94,10 +89,16 @@ double BMP180::readTemperature() {
     i2c_cmd_link_delete(cmd);
     vTaskDelay(pdMS_TO_TICKS(5));
     double UT = read16Bit(BMP085_REGISTER_TEMPDATA);
+    //UT = 27898;
 
-    double a = (UT - c6) * c5;
-    m_temp = a + (mc / (a + md));
-    return m_temp;
+    x1 = (UT - m_AC6) * m_AC5 / (1 << 15);
+    x2 = m_MC * (1 << 11) / (x1 + m_MD);
+    ESP_LOGD(tag, "x1 = %ld, x2 = %ld", x1, x2);
+
+    b5 = x1 + x2;
+    ESP_LOGD(tag, "b5 = %ld", b5);
+    m_temp = (b5 + 8) / (1 << 4);
+    return m_temp / 10;
 }
 
 double BMP180::readPressure() {
@@ -127,14 +128,45 @@ double BMP180::readPressure() {
         vTaskDelay(pdMS_TO_TICKS(26));
         break;
     }
-    double pu,s,x,y,z;
+    long pu, b6, b3, x3, p;
+    unsigned long b4, b7;
 
     pu = read24Bit(BMP085_REGISTER_PRESSUREDATA) >> (8 - m_mode);
-    s = m_temp - 25.0;
-    x = (x2 * pow(s,2)) + (x1 * s) + x0;
-    y = (y2 * pow(s,2)) + (y1 * s) + y0;
-    z = (pu - x) / y;
-    m_pressure = (p2 * pow(z,2)) + (p1 * z) + p0;
+    //pu = 23843;
+    //m_mode = BMP085_MODE_ULTRALOWPOWER;
 
-    return m_pressure;
+    b6 = b5 - 4000;
+    ESP_LOGD(tag, "b5 = %ld, b6 = %ld", b5, b6);
+    x1 = (m_B2 * (b6 * b6 / (1 << 12))) / (1 << 11);
+    x2 = m_AC2 * b6 / (1 << 11);
+    x3 = x1 + x2;
+    ESP_LOGD(tag, "x1 = %ld, x2 = %ld, x3 = %ld", x1, x2, x3);
+    b3 = (((m_AC1 * 4 + x3) << m_mode) + 2) / 4;
+    ESP_LOGD(tag, "b3 = %ld", b3);
+    x1 = m_AC3 * b6 / (1 << 13);
+    x2 = (m_B1 * (b6 * b6 / (1 << 12))) / (1 << 16);
+    x3 = ((x1 + x2) + 2) / (1 << 2);
+    ESP_LOGD(tag, "x1 = %ld, x2 = %ld, x3 = %ld", x1, x2, x3);
+    b4 = m_AC4 * (unsigned long)(x3 + 32768) / (1 << 15);
+    ESP_LOGD(tag, "b4 = %ld", b4);
+    b7 = ((unsigned long)pu - b3) * (50000 >> m_mode);
+    ESP_LOGD(tag, "b7 = %ld", b7);
+    if (b7 < 0x80000000) {
+        p = (b7 * 2) / b4;
+    } else {
+        p = (b7 / b4) * 2;
+    }
+    ESP_LOGD(tag, "p = %ld", p);
+    x1 = (p / (1 << 8)) * (p / (1 << 8));
+    ESP_LOGD(tag, "x1 = %ld", x1);
+    x1 = (x1 * 3038) / (1 << 16);
+    ESP_LOGD(tag, "x1 = %ld", x1);
+    x2 = (-7357 * p) / (1 << 16);
+    ESP_LOGD(tag, "x2 = %ld", x2);
+    p = p + (x1 + x2 + 3791) / (1 << 4);
+    ESP_LOGD(tag, "p = %ld", p);
+    m_pressure = p;
+
+    //return m_pressure / 100;
+    return m_pressure / (pow((1.0 - (115.0 / 44330.0)), 5.255)) / 100;
 }

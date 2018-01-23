@@ -39,7 +39,7 @@ typedef enum
 class BMP180 {
     public:
         BMP180() : BMP180(BMP085_MODE_STANDARD) {};
-        BMP180(bmp085_mode_t mode) { m_i2cPort = I2C_NUM_0; m_mode = mode; readParameters(); };
+        BMP180(bmp085_mode_t mode) { m_i2cPort = I2C_NUM_0; m_mode = (uint8_t)mode; readParameters(); };
         double readPressure();
         double readTemperature();
 
@@ -55,14 +55,14 @@ class BMP180 {
         long read24Bit(uint8_t reg);
         long read16Bit(uint8_t reg);
         i2c_cmd_handle_t prepare_read(uint8_t reg);
-        bmp085_mode_t m_mode;
+        uint8_t m_mode;
         i2c_port_t m_i2cPort;
 
-double m_temp;
+        double m_temp;
         double m_pressure;
         int16_t m_AC1, m_AC2, m_AC3, m_B1, m_B2, m_MC, m_MD;
         uint16_t m_AC4, m_AC5, m_AC6;
-        double c5,c6,mc,md,x0,x1,x2,y0,y1,y2,p0,p1,p2;
+        long x1, x2, b5;
 };
 
 #endif
